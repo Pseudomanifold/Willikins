@@ -12,11 +12,12 @@ import os
 import shlex
 import subprocess
 import string
+import time
 
 from slackclient import SlackClient
 from subprocess  import Popen, PIPE
 
-def format_output(stdout, stderr, rc):
+def format_output(stdout, stderr, rc, time):
   """
   Formats the output that is used in sending the message to the client,
   depending on the return code of the command.
@@ -25,13 +26,17 @@ def format_output(stdout, stderr, rc):
   template = string.Template("""
 ${greeting}!\n
 I have finished executing your job. Its return code is `$rc`, which
-$comment.
+$comment.\n
+Your command took `$time` to run. I am attaching its output to this
+message. If the command created any files, you will have to inspect
+them manually.
   """)
 
   return template.substitute( {
     "greeting" : "Hello",
     "rc"       : rc,
-    "comment"  : "looks good to me" if rc == 0 else "may indicate an error"
+    "comment"  : "looks good to me" if rc == 0 else "may indicate an error",
+    "time"     : time
   } )
 
 if __name__ == "__main__":
@@ -71,11 +76,14 @@ if __name__ == "__main__":
   # Run the command
   ######################################################################
 
+  time_start     = time.process_time()
   commands       = shlex.split(command)
   p              = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
   stdout, stderr = p.communicate()
   rc             = p.returncode
-  message        = format_output(stdout, stderr, rc)
+  time_stop      = time.process_time()
+  duration       = "{:2f} s".format(time_stop - time_start)
+  message        = format_output(stdout, stderr, rc, duration)
 
   sc.api_call(
     "chat.postMessage",
