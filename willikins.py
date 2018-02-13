@@ -53,9 +53,6 @@ def format_attachments(stdout, stderr):
     if not text:
       continue
 
-    # TODO: make the encoding configurable
-    text = text.decode('utf-8')
-
     properties = {
       "title"   : description,
       "fallback": description,
@@ -114,6 +111,10 @@ if __name__ == "__main__":
   duration       = "{:2f} s".format(time.perf_counter() - time_start)
   message        = format_output(rc, duration)
 
+  # TODO: make encoding configurable
+  stdout = stdout.decode("utf-8")
+  stderr = stderr.decode("utf-8")
+
   if attach:
     attachments = format_attachments(stdout, stderr)
   else:
@@ -125,3 +126,17 @@ if __name__ == "__main__":
       text        = message,
       attachments = attachments
   )
+
+  # User wants us to *upload* the output of the command instead of
+  # attaching it directly to the message.
+  if not attach:
+    for data, description in zip([stdout, stderr], ["stdout", "stderr"]):
+      if not data:
+        continue
+
+      sc.api_call(
+        "files.upload",
+          channels = channel_id,
+          content  = data,
+          title    = description
+      )
