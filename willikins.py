@@ -7,12 +7,32 @@
 # the command that is to be run. Willikins executes it and sends some
 # information about the command back to you.
 
-from slackclient import SlackClient
-
 import argparse
 import os 
 import shlex
 import subprocess
+import string
+
+from slackclient import SlackClient
+from subprocess  import Popen, PIPE
+
+def format_output(stdout, stderr, rc):
+  """
+  Formats the output that is used in sending the message to the client,
+  depending on the return code of the command.
+  """
+
+  template = string.Template("""
+${greeting}!\n
+I have finished executing your job. Its return code is `$rc`, which
+$comment.
+  """)
+
+  return template.substitute( {
+    "greeting" : "Hello",
+    "rc"       : rc,
+    "comment"  : "looks good to me" if rc == 0 else "may indicate an error"
+  } )
 
 if __name__ == "__main__":
 
@@ -35,6 +55,7 @@ if __name__ == "__main__":
 
   token   = os.getenv("SLACK_BOT_TOKEN")
   user_id = arguments.user
+  command = arguments.command
 
   sc          = SlackClient(token)
   im_channels = sc.api_call("im.list")
@@ -50,9 +71,15 @@ if __name__ == "__main__":
   # Run the command
   ######################################################################
 
+  commands       = shlex.split(command)
+  p              = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
+  stdout, stderr = p.communicate()
+  rc             = p.returncode
+  message        = format_output(stdout, stderr, rc)
+
   sc.api_call(
     "chat.postMessage",
       channel = channel_id,
-      text    = "This is a test!",
+      text    = message,
       as_user = False
   )
