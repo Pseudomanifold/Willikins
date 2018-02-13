@@ -54,7 +54,7 @@ def format_attachments(stdout, stderr):
       continue
 
     # TODO: make the encoding configurable
-    text = "```" + text.decode('utf-8') + "```"
+    text = text.decode('utf-8')
 
     properties = {
       "title"   : description,
@@ -104,13 +104,12 @@ if __name__ == "__main__":
   # Run the command
   ######################################################################
 
-  time_start     = time.process_time()
+  time_start     = time.perf_counter()
   commands       = shlex.split(command)
   p              = Popen(shlex.split(command), stdout=PIPE, stderr=PIPE)
   stdout, stderr = p.communicate()
   rc             = p.returncode
-  time_stop      = time.process_time()
-  duration       = "{:2f} s".format(time_stop - time_start)
+  duration       = "{:2f} s".format(time.perf_counter() - time_start)
   message        = format_output(rc, duration)
   attachments    = format_attachments(stdout, stderr)
 
