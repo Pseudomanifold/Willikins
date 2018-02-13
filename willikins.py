@@ -74,8 +74,9 @@ if __name__ == "__main__":
   ######################################################################
 
   parser = argparse.ArgumentParser(description="Executes job with prejudice")
-  parser.add_argument("-u", "--user",                    action="store", type=str, help="ID of user to report to")
-  parser.add_argument("command"     , metavar="COMMAND", action="store", type=str, help="Command to run"         )
+  parser.add_argument("-a", "--attach",                  action="store_true",           help="Attach command output instead of using a snippet")
+  parser.add_argument("-u", "--user",                    action="store"     , type=str, help="ID of user to report to")
+  parser.add_argument("command"     , metavar="COMMAND", action="store"     , type=str, help="Command to run"         )
 
   arguments = parser.parse_args()
 
@@ -89,6 +90,7 @@ if __name__ == "__main__":
   token   = os.getenv("SLACK_BOT_TOKEN")
   user_id = arguments.user
   command = arguments.command
+  attach  = arguments.attach
 
   sc          = SlackClient(token)
   im_channels = sc.api_call("im.list")
@@ -111,7 +113,11 @@ if __name__ == "__main__":
   rc             = p.returncode
   duration       = "{:2f} s".format(time.perf_counter() - time_start)
   message        = format_output(rc, duration)
-  attachments    = format_attachments(stdout, stderr)
+
+  if attach:
+    attachments = format_attachments(stdout, stderr)
+  else:
+    attachments = None
 
   sc.api_call(
     "chat.postMessage",
