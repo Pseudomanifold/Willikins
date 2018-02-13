@@ -8,16 +8,18 @@
 # information about the command back to you.
 
 import argparse
+import json
 import os 
 import shlex
-import subprocess
 import string
+import subprocess
 import time
 
+from cgi         import escape
 from slackclient import SlackClient
 from subprocess  import Popen, PIPE
 
-def format_output(stdout, stderr, rc, time):
+def format_output(rc, time):
   """
   Formats the output that is used in sending the message to the client,
   depending on the return code of the command.
@@ -38,6 +40,32 @@ them manually.
     "comment"  : "looks good to me" if rc == 0 else "may indicate an error",
     "time"     : time
   } )
+
+def format_attachments(stdout, stderr):
+  """
+  Formats the attachments of both `stdout` and `stderr` for a new
+  message to the client.
+  """
+
+  attachments = []
+
+  for text, description in zip( [stdout, stderr], ["`stdout`", "`stderr`"]):
+    if not text:
+      continue
+
+    # TODO: make the encoding configurable
+    text = "```" + text.decode('utf-8') + "```"
+
+    properties = {
+      "title"   : description,
+      "fallback": description,
+      "text"    : escape(text),
+      "mrkdwn"  : "false",
+    }
+
+    attachments.append(properties)
+
+  return json.dumps(attachments)
 
 if __name__ == "__main__":
 
@@ -83,11 +111,12 @@ if __name__ == "__main__":
   rc             = p.returncode
   time_stop      = time.process_time()
   duration       = "{:2f} s".format(time_stop - time_start)
-  message        = format_output(stdout, stderr, rc, duration)
+  message        = format_output(rc, duration)
+  attachments    = format_attachments(stdout, stderr)
 
   sc.api_call(
     "chat.postMessage",
-      channel = channel_id,
-      text    = message,
-      as_user = False
+      channel     = channel_id,
+      text        = message,
+      attachments = attachments
   )
